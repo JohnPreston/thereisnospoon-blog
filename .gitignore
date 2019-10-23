@@ -1,0 +1,8 @@
+*~
+*.pyc
+__py*
+conf.py
+*.json
+*.db
+cache/*
+output/*
