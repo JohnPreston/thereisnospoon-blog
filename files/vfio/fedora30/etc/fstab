@@ -1,0 +1,2 @@
+# HUGE PAGES
+hugetlbfs /dev/hugepages hugetlbfs rw,relatime,seclabel,pagesize=2M 0 0

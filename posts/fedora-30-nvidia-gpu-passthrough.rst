@@ -133,19 +133,20 @@ My installed packages and versions:
 
 3. Enable IOMMU in /etc/sysconfig/grub
 
+`/etc/sysconfig/grub`
 
-.. code-block:: properties
-   :name: /etc/sysconfig/grub
 
-   #GRUB_CMDLINE_LINUX="resume=UUID=d1878475-264a-4374-8870-dcb4ae8b81d0 rhgb quiet"
-   GRUB_CMDLINE_LINUX="resume=UUID=d1878475-264a-4374-8870-dcb4ae8b81d0 rhgb quiet intel_iommu=on iommu=pt"
+.. include:: files/vfio/fedora30/etc/sysconfig/iommu_grub
+   :code: properties
 
 
 .. code-block:: bash
 
    grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg
 
+
 Now we can reboot and check that IOMMU is enabled.
+
 
 3. Check IOMMU is enabled after reboot
 
@@ -156,15 +157,8 @@ Now we can reboot and check that IOMMU is enabled.
 
 From `Arch Documentation <https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF#Setting_up_IOMMU>`_ this script allows to check your IOMMU Groups and the devices in these.
 
-.. code-block:: bash
-
-   #!/bin/bash
-   for d in /sys/kernel/iommu_groups/*/devices/*; do
-     n=${d#*/iommu_groups/*}; n=${n%%/*}
-     printf 'IOMMU Group %s ' "$n"
-     lspci -nns "${d##*/}"
-   done
-
+.. include:: files/vfio/fedora30/var/tmp/iommu_check.sh
+   :code: bash
 
 4. Identify your GPU (GPU1) PCI address.
 
@@ -197,18 +191,13 @@ From `Arch Documentation <https://wiki.archlinux.org/index.php/PCI_passthrough_v
 
 `/etc/modprobe.d/vfio.conf`
 
-.. code-block:: properties
-   :name: /etc/modprobe.d/vfio.conf
-
-   install vfio-pci /usr/bin/vfio-pci-override.sh
-   options vfio-pci disable_vga=1
-
+.. include:: files/vfio/fedora30/etc/modprobe.d/vfio.conf
 
 6. Setup VFIO module settings
 
 `/usr/bin/vfio-pci-override.sh`
 
-.. include:: files/vfio-pci-override.sh
+.. include:: files/vfio/fedora30/usr/bin/vfio-pci-override.sh
    :code: bash
 
 Here pay attention that I have specifically aimed for the devices in 0000:03: only because that is the BUS in which my GPU is into.
@@ -223,12 +212,7 @@ Adapt accordingly to your needs and addresses.
 
 `/etc/dracut.conf.d/vfio.conf`
 
-.. code-block:: properties
-   :name: /etc/dracut.conf.d/vfio.conf
-
-   add_drivers+="vfio_pci vfio vfio_iommu_type1 vfio_virqfd"
-   install_items+="/usr/bin/vfio-pci-override.sh /usr/bin/dirname"
-
+.. include:: files/vfio/fedora30/etc/dracut.conf.d/vfio.conf
 
 
 .. code-block:: bash
@@ -333,11 +317,8 @@ I always go for ^2 numbers because it is always easier / faster for a computer t
 
 `/etc/sysctl.conf`
 
-.. code-block:: properties
-   :name: /etc/sysctl.conf
-
-   vm.nr_hugepages=8192
-   vm.hugetlb_shm_group
+.. include:: files/vfio/fedora30/etc/sysctl.conf
+   :code: properties
 
 
 .. code-block:: bash
@@ -348,11 +329,8 @@ I always go for ^2 numbers because it is always easier / faster for a computer t
 
 `/etc/security/limits.conf`
 
-.. code-block:: properties
-   :name: /etc/security/limits.conf
-
-   soft memlock 16777216
-   hard memlock 16777216
+.. include:: files/vfio/fedora30/etc/security/limits.conf
+   :code: properties
 
 
 Install OVMF - UEFI for KVM
@@ -430,6 +408,8 @@ More information `here <https://docs.fedoraproject.org/en-US/quick-docs/creating
     sudo wget https://fedorapeople.org/groups/virt/virtio-win/virtio-win.repo -O /etc/yum.repos.d/virtio-win.repo
     sudo dnf install virtio-win
 
+To ensure that you have the drivers available as you install Windows, create a second CD Rom storage and mount the drivers ISO. Once in windows setup, bottom left, you will find a
+
 
 1. Create our Win10 VM
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -441,56 +421,102 @@ Requires:
 * VirtIO drivers ISO (if you are using Virtio for HDD too).
 * Your GPU to have been isolated to attach it.
 
+.. note::
+
+   Pro-Tip: If you are new to Virt-manager and KVM, notice the `Browse Local` button which allows you to mount a file from anywhere. However, you need to 
+
+
 Virt-Manager makes it super easy to do that. So let's do the domain creation quickly.
 
-A. Select source
-B. Select OS
-C. Set CPU/RAM
-D. Set Storage Size and pool
-E. Set network to the bridge
+A. Select source -> ISO -> Windows ISO
+
+.. thumbnail:: /images/vfio/SourceISO.png
+
+B. Set CPU/RAM -> I recommend 4 vCPU at least and 8GB of RAM. Depends on your available capacity.
+
+.. thumbnail:: /images/vfio/CPUandRAM.png
+
+
+C. Set Storage Size and pool -> I went for 128GB disk in a new pool that I created in my home folder.
+
+.. thumbnail:: /images/vfio/Storage.png
+
+D. Set network to the bridge -> br0 for me.
+
+
+.. thumbnail:: /images/vfio/Networking.png
+
+.. warning::
+
+   Tick the box for custom before install so it doesn't start the VM.
+   If you forgot to tick the box and wanted to make changes, do so and then re-enable the boot devices from the CDROM.
+
+
+`Boot options`
+
+.. thumbnail:: /images/vfio/BootOptions.png
+
+`Optional - Virtio Disk`
+
+.. thumbnail:: /images/vfio/VirtioDisk.png
+
+
+`Optional - Virtio Network`
+
+.. thumbnail:: /images/vfio/VirtioNetwork.png
+
+
+.. note:: For all future files edit, I will do it with
+
+   .. code-block:: bash
+
+      virsh edit win10 # where win10 is the name of the VM you created in VirtManager
+
+
+E. Modify domain to include mode schemas
+
+.. include:: files/vfio/fedora30/etc/libvirt/qemu/win10.xml
+   :code: xml
+   :end-line: 1
+
 F. Memory tuning
 
-For all future files edit, I will do it with
 
-.. code-block:: bash
+Adding the huge page as the backend for our VM.
 
-   virsh edit win10 # where win10 is the name of the VM you created in VirtManager
-
-
-Adding the huge page
-
-.. code-block:: xml
-
-   <>
+.. include:: files/vfio/fedora30/etc/libvirt/qemu/win10.xml
+   :code: xml
+   :start-line: 9
+   :end-line: 13
 
 G. CPU Pinning and tuning
 
 CPU pinning is optional. It allows to bind a vCPU to a CPU core/thread of your machine.
 
 
+.. include:: files/vfio/fedora30/etc/libvirt/qemu/win10.xml
+   :code: xml
+   :start-line: 38
+   :end-line: 52
+
 
 H. Fake NVIDIA
 ^^^^^^^^^^^^^^
 
-Add the <kvm> section to your definition. To edit your definition, use.
+So NVIDIA driver figures out that there is some information that tells it is not running bare metal but in a VM. Greedy as they are, they want you to get expensive Quadro cards etc. for this usage... So we are going to cheat on NVIDIA.
 
-.. code-block:: xml
+* Add a vendor_id to the *hyperv*
+* Instruct KVM to hide itself from the OS
 
-   <features>
-     <acpi/>
-     <apic/>
-     <hyperv>
-       <relaxed state='off'/>
-       <vapic state='off'/>
-       <spinlocks state='off'/>
-       <vendor_id state='on' value='1234567890ab'/>
-     </hyperv>
-     <kvm>
-       <hidden state='on'/>
-     </kvm>
-     <vmport state='off'/>
-     <ioapic driver='kvm'/>
-   </features>
+.. include:: files/vfio/fedora30/etc/libvirt/qemu/win10.xml
+   :code: xml
+   :start-line: 22
+   :end-line: 37
+
+
+.. note::
+
+   The other settings in hyperv do not seem to make much difference. In previous posts online, found a lot of people suggesting to turn these off. For consistency turning these off here, but seems like it doesn't make much of a difference at all.
 
 
 I. Add the Virtio drivers disk and set HDD to virtio
@@ -498,11 +524,43 @@ I. Add the Virtio drivers disk and set HDD to virtio
 
 J. Install Windows
 
+.. image:: https://media.giphy.com/media/jhoj54xNioNjy/giphy.gif
+
+Don't forget to turn off as much $h17 as possible from MS' services and otherwise-wares...
+
+.. image:: https://media.giphy.com/media/xTiTnrSUiMcPD9QXSM/giphy.gif
+
+
+( I could not decide which GIF was best to illustrate my thinking)
+
+.. image:: https://media.giphy.com/media/hJaQNVrOPC4Ja/giphy.gif
+
 K. Install NVIDIA drivers
+
+From within your VM, downlaod the drivers and install them. `Link for drivers <https://www.nvidia.co.uk/Download/index.aspx?lang=en-uk>`_
+
+Once the installation is done, reboot the VM.
 
 L. The moment of truth
 
+.. note::
 
-Sources
--------
+   I highly recommend to have connected the passthrough GPU to a monitor/TV to feel the joy of seeing the screen turn on!
+   But also it seems Windows will prefer that over the VGA device of KVM
 
+
+
+
+Boot your VM if not just reboot from the NVIDIA drivers install.
+If all went well, your GPU will turn on, you will see the UEFI display come up, and a few seconds later, you should have the Windows login page show up before your eyes on your second monitor / TV.
+
+If it doesn't go back to the Device Manager to figure out if the card is properly setup. If you have another Error code 43, I would recommend buying an ATI GPU...
+Joke aside, using the EFI boot for Windows is what my Error Code 43 from NVIDIA, everything else was done but that...
+
+.. note::
+
+   Pro Tip: If like me you intend to stream your games as opposed to have a secondardy screen / monitor to play with, save yourself a lot of pain and get yourself a `HDMI or Display Port Ghost <https://amzn.to/2qHhNmH>`_ dongle. Connect a real monitor so you can set the resolution and frequency of that fake second monitor and then disconnect that real monitor.
+   Why ? Because this will fake Windows into using the GPU and allow you to stream.
+
+
+.. note:: For those of you (like me) who then use RDP to control Windows, steam etc. but then want to stream, you will have to disconnect from RDP. Doing so the normal way will close your user session. To keep the session open but shut RDP off, you can use `this script <https://thereisnospoon.ews-network.net/vfio/logout.bat>`_
