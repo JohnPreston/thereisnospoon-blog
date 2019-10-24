@@ -192,6 +192,8 @@ From `Arch Documentation <https://wiki.archlinux.org/index.php/PCI_passthrough_v
 `/etc/modprobe.d/vfio.conf`
 
 .. include:: files/vfio/fedora30/etc/modprobe.d/vfio.conf
+   :code: bash
+
 
 6. Setup VFIO module settings
 
@@ -213,6 +215,7 @@ Adapt accordingly to your needs and addresses.
 `/etc/dracut.conf.d/vfio.conf`
 
 .. include:: files/vfio/fedora30/etc/dracut.conf.d/vfio.conf
+   :code: bash
 
 
 .. code-block:: bash
@@ -473,6 +476,14 @@ D. Set network to the bridge -> br0 for me.
       virsh edit win10 # where win10 is the name of the VM you created in VirtManager
 
 
+`Optional - Windows 10 find VirtioDrivers at install`
+
+Click on *Load Drivers* -> Navigate to the Secondary Disk.
+
+.. thumbnail:: /images/vfio/VirtioWindows.png
+
+.. thumbnail:: /images/vfio/VirtioWindowsEnable.png
+
 E. Modify domain to include mode schemas
 
 .. include:: files/vfio/fedora30/etc/libvirt/qemu/win10.xml
@@ -519,10 +530,7 @@ So NVIDIA driver figures out that there is some information that tells it is not
    The other settings in hyperv do not seem to make much difference. In previous posts online, found a lot of people suggesting to turn these off. For consistency turning these off here, but seems like it doesn't make much of a difference at all.
 
 
-I. Add the Virtio drivers disk and set HDD to virtio
-
-
-J. Install Windows
+I. Install Windows
 
 .. image:: https://media.giphy.com/media/jhoj54xNioNjy/giphy.gif
 
@@ -535,13 +543,13 @@ Don't forget to turn off as much $h17 as possible from MS' services and otherwis
 
 .. image:: https://media.giphy.com/media/hJaQNVrOPC4Ja/giphy.gif
 
-K. Install NVIDIA drivers
+J. Install NVIDIA drivers
 
 From within your VM, downlaod the drivers and install them. `Link for drivers <https://www.nvidia.co.uk/Download/index.aspx?lang=en-uk>`_
 
 Once the installation is done, reboot the VM.
 
-L. The moment of truth
+K. The moment of truth
 
 .. note::
 
